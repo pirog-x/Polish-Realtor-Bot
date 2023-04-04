@@ -26,6 +26,9 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
+# my own
+src/main/resources/application.yml
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
