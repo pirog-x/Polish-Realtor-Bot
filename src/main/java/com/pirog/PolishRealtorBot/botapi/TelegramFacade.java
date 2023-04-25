@@ -13,9 +13,9 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 @Service
 public class TelegramFacade {
     @Autowired
-    BotStateContext botStateContext;
+    private BotStateContext botStateContext;
     @Autowired
-    UserDataCache userCache;
+    private UserDataCache userCache;
 
     public BotApiMethod<?> handleUpdate(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -27,13 +27,13 @@ public class TelegramFacade {
     private SendMessage handleTextMessage(Message message) {
         String inputMsg = message.getText();
         long userId = message.getFrom().getId();
-        long chatId = message.getChatId();
         BotState state;
 
         switch (inputMsg) {
-            case "/start" -> state = BotState.SET_LANGUAGE;
+            case "/start" -> state = BotState.FILLING_PARSER_SETTINGS;
             default -> state = userCache.getCurrentBotState(userId);
         }
+        userCache.setBotState(userId, state);
         return botStateContext.processInputMessage(state, message);
     }
 }

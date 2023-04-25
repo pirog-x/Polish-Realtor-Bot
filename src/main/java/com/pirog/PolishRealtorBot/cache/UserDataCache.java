@@ -18,6 +18,9 @@ public class UserDataCache implements DataCache {
 
     @Override
     public BotState getCurrentBotState(Long userId) {
-        return cache.getOrDefault(userId, BotState.SET_LANGUAGE);
+        if (!cache.containsKey(userId)) {
+            setBotState(userId, BotState.SET_LANGUAGE);
+        }
+        return cache.get(userId);
     }
 }
