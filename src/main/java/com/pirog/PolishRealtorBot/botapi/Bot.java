@@ -1,6 +1,7 @@
 package com.pirog.PolishRealtorBot.botapi;
 
 import lombok.Setter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
@@ -9,6 +10,9 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 
 @Setter
 public class Bot extends TelegramWebhookBot {
+
+    @Autowired
+    TelegramFacade telegramFacade;
 
     private String username;
     private String token;
@@ -21,14 +25,7 @@ public class Bot extends TelegramWebhookBot {
 
     @Override
     public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            SendMessage sendMessage = new SendMessage();
-            sendMessage.setChatId(update.getMessage().getChatId());
-            sendMessage.setReplyToMessageId(update.getMessage().getMessageId());
-            sendMessage.setText(update.getMessage().getText());
-            return sendMessage;
-        }
-        return null;
+        return telegramFacade.handleUpdate(update);
     }
 
     @Override
