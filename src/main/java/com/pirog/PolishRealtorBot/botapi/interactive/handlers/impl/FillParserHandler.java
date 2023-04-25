@@ -3,6 +3,8 @@ package com.pirog.PolishRealtorBot.botapi.interactive.handlers.impl;
 import com.pirog.PolishRealtorBot.botapi.interactive.BotState;
 import com.pirog.PolishRealtorBot.botapi.interactive.handlers.InputMessageHandler;
 import com.pirog.PolishRealtorBot.cache.UserDataCache;
+import com.pirog.PolishRealtorBot.dao.entity.UserParserSettings;
+import com.pirog.PolishRealtorBot.dao.repository.UserParserSettingsRepository;
 import com.vdurmont.emoji.EmojiParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -21,6 +23,8 @@ public class FillParserHandler implements InputMessageHandler {
 
     @Autowired
     private UserDataCache userCache;
+    @Autowired
+    private UserParserSettingsRepository userParserSettingsRepository;
 
     @Override
     public SendMessage handle(Message message) {
