@@ -3,9 +3,12 @@ package com.pirog.PolishRealtorBot.botapi.interactive.handlers.impl;
 import com.pirog.PolishRealtorBot.botapi.interactive.BotState;
 import com.pirog.PolishRealtorBot.botapi.interactive.handlers.InputMessageHandler;
 import com.pirog.PolishRealtorBot.cache.UserDataCache;
-import com.pirog.PolishRealtorBot.dao.entity.UserParserSettings;
 import com.pirog.PolishRealtorBot.dao.repository.UserParserSettingsRepository;
+import com.pirog.PolishRealtorBot.service.UserParserSettingsInMemoryService;
 import com.vdurmont.emoji.EmojiParser;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -19,12 +22,15 @@ import java.util.Arrays;
 import java.util.List;
 
 @Component
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class FillParserHandler implements InputMessageHandler {
 
-    @Autowired
-    private UserDataCache userCache;
-    @Autowired
-    private UserParserSettingsRepository userParserSettingsRepository;
+     UserDataCache userCache;
+     UserParserSettingsRepository userParserSettingsRepository;
+     UserParserSettingsInMemoryService memoryParserService;
+
+
 
     @Override
     public SendMessage handle(Message message) {

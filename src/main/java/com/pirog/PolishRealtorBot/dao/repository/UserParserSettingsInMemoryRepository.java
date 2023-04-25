@@ -1,7 +1,7 @@
 package com.pirog.PolishRealtorBot.dao.repository;
 
 import com.pirog.PolishRealtorBot.dao.entity.UserParserSettings;
-import com.pirog.PolishRealtorBot.exception.entity.NoSuchUserException;
+import com.pirog.PolishRealtorBot.exception.NoSuchUserException;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
