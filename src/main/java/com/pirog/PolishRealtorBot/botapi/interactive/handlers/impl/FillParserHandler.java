@@ -3,17 +3,17 @@ package com.pirog.PolishRealtorBot.botapi.interactive.handlers.impl;
 import com.pirog.PolishRealtorBot.botapi.interactive.BotState;
 import com.pirog.PolishRealtorBot.botapi.interactive.handlers.InputMessageHandler;
 import com.pirog.PolishRealtorBot.cache.UserDataCache;
-import com.pirog.PolishRealtorBot.dao.repository.UserParserSettingsRepository;
+import com.pirog.PolishRealtorBot.dao.entity.UserParserSettings;
 import com.pirog.PolishRealtorBot.service.UserParserSettingsInMemoryService;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
@@ -27,10 +27,7 @@ import java.util.List;
 public class FillParserHandler implements InputMessageHandler {
 
      UserDataCache userCache;
-     UserParserSettingsRepository userParserSettingsRepository;
-     UserParserSettingsInMemoryService memoryParserService;
-
-
+     UserParserSettingsInMemoryService userParserSettingsInMemoryService;
 
     @Override
     public SendMessage handle(Message message) {
@@ -49,17 +46,11 @@ public class FillParserHandler implements InputMessageHandler {
         switch (currentState) {
             case SET_LANGUAGE -> answer = handleSetLanguage(message);
             case SET_CITY -> answer = handleSetCity(message);
+            case SET_MIN_PRICE -> answer = handleSetMinPrice(message);
+            case SET_MAX_PRICE -> answer = handleSetMaxPrice(message);
             default -> answer = getDefaultAnswer(message);
         }
         return answer;
-    }
-
-    private SendMessage getDefaultAnswer(Message message) {
-        return SendMessage.builder()
-                .text("Please, select again")
-                .chatId(message.getChatId())
-                .replyMarkup(message.getReplyMarkup())
-                .build();
     }
 
     private SendMessage handleSetLanguage(Message message) {
@@ -106,6 +97,9 @@ public class FillParserHandler implements InputMessageHandler {
         String lang = EmojiParser.removeAllEmojis(message.getText()).trim();
 
         if (existLanguages.contains(lang)) {
+            UserParserSettings settings = new UserParserSettings();
+            settings.setLanguage(lang);
+            userParserSettingsInMemoryService.save(userId, settings);
             userCache.setBotState(userId, BotState.SET_MIN_PRICE);
             return SendMessage.builder()
                     .text("Select city.")
@@ -140,6 +134,68 @@ public class FillParserHandler implements InputMessageHandler {
 
         replyKeyboardMarkup.setKeyboard(List.of(row1, row2, row3, row4));
         return replyKeyboardMarkup;
+    }
+
+    private SendMessage handleSetMinPrice(Message message) {
+        long chatId = message.getChatId();
+        long userId = message.getFrom().getId();
+        String city = message.getText();
+
+        List<String> cities = List.of("warsaw", "krakow", "lodz", "wroclaw", "poznan", "gdansk", "szczecin", "bydgoszcz");
+        if (cities.contains(city.toLowerCase())) {
+            UserParserSettings old = userParserSettingsInMemoryService.get(userId);
+            old.setCity(city);
+            userParserSettingsInMemoryService.update(userId, old);
+            userCache.setBotState(userId, BotState.SET_MAX_PRICE);
+            ReplyKeyboardRemove keyboardRemove = new ReplyKeyboardRemove();
+            keyboardRemove.setRemoveKeyboard(true);
+            return SendMessage.builder()
+                    .text("Enter the minimum price in PLN.")
+                    .chatId(chatId)
+                    .replyMarkup(removeKeyboard())
+                    .build();
+        } else {
+            return getDefaultAnswer(message);
+        }
+    }
+
+    private SendMessage handleSetMaxPrice(Message message) {
+        long chatId = message.getChatId();
+        long userId = message.getFrom().getId();
+        int minPrice;
+        try {
+            minPrice = (int) Float.parseFloat(message.getText());
+        } catch (NumberFormatException e) {
+            return SendMessage.builder()
+                    .chatId(chatId)
+                    .text("Enter the minimum price in PLN.")
+                    .build();
+        }
+        UserParserSettings old = userParserSettingsInMemoryService.get(userId);
+        old.setMinPrice(minPrice);
+        userParserSettingsInMemoryService.update(userId, old);
+
+        userCache.setBotState(userId, BotState.SET_AD_TYPE);
+
+        return SendMessage.builder()
+                .chatId(chatId)
+                .text("Enter the maximum price in PLN.")
+                .build();
+    }
+
+    private ReplyKeyboardRemove removeKeyboard() {
+        return ReplyKeyboardRemove.builder()
+                .removeKeyboard(true)
+                .selective(true)
+                .build();
+    }
+
+    private SendMessage getDefaultAnswer(Message message) {
+        return SendMessage.builder()
+                .text("Please, select again.")
+                .chatId(message.getChatId())
+                .replyMarkup(message.getReplyMarkup())
+                .build();
     }
 
     @Override
