@@ -48,6 +48,7 @@ public class FillParserHandler implements InputMessageHandler {
             case SET_CITY -> answer = handleSetCity(message);
             case SET_MIN_PRICE -> answer = handleSetMinPrice(message);
             case SET_MAX_PRICE -> answer = handleSetMaxPrice(message);
+            case SET_AD_TYPE -> answer = handleAdType(message);
             default -> answer = getDefaultAnswer(message);
         }
         return answer;
@@ -102,7 +103,7 @@ public class FillParserHandler implements InputMessageHandler {
             userParserSettingsInMemoryService.save(userId, settings);
             userCache.setBotState(userId, BotState.SET_MIN_PRICE);
             return SendMessage.builder()
-                    .text("Select city.")
+                    .text(EmojiParser.parseToUnicode("Select city :city_sunset:"))
                     .chatId(chatId)
                     .replyMarkup(keyboardMarkup)
                     .build();
@@ -150,7 +151,7 @@ public class FillParserHandler implements InputMessageHandler {
             ReplyKeyboardRemove keyboardRemove = new ReplyKeyboardRemove();
             keyboardRemove.setRemoveKeyboard(true);
             return SendMessage.builder()
-                    .text("Enter the minimum price in PLN.")
+                    .text(EmojiParser.parseToUnicode("Enter the minimum price in PLN :dollar:"))
                     .chatId(chatId)
                     .replyMarkup(removeKeyboard())
                     .build();
@@ -165,10 +166,11 @@ public class FillParserHandler implements InputMessageHandler {
         int minPrice;
         try {
             minPrice = (int) Float.parseFloat(message.getText());
+            if (minPrice < 0) throw new NumberFormatException();
         } catch (NumberFormatException e) {
             return SendMessage.builder()
                     .chatId(chatId)
-                    .text("Enter the minimum price in PLN.")
+                    .text(EmojiParser.parseToUnicode("Enter the minimum price in PLN :dollar:"))
                     .build();
         }
         UserParserSettings old = userParserSettingsInMemoryService.get(userId);
@@ -179,8 +181,55 @@ public class FillParserHandler implements InputMessageHandler {
 
         return SendMessage.builder()
                 .chatId(chatId)
-                .text("Enter the maximum price in PLN.")
+                .text(EmojiParser.parseToUnicode("Enter the maximum price in PLN :dollar:"))
                 .build();
+    }
+
+    private SendMessage handleAdType(Message message) {
+        long chatId = message.getChatId();
+        long userId = message.getFrom().getId();
+        int maxPrice;
+        UserParserSettings old = userParserSettingsInMemoryService.get(userId);
+        try {
+            maxPrice = (int) Float.parseFloat(message.getText());
+            if (maxPrice < 0) throw new NumberFormatException();
+            if (maxPrice <= old.getMinPrice()) {
+                return SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Maximum price must be bigger than minimum.")
+                        .build();
+            }
+        } catch (NumberFormatException e) {
+            return SendMessage.builder()
+                    .chatId(chatId)
+                    .text(EmojiParser.parseToUnicode("Enter the maximum price in PLN :dollar:"))
+                    .build();
+        }
+        old.setMaxPrice(maxPrice);
+        userParserSettingsInMemoryService.update(userId, old);
+
+        userCache.setBotState(userId, BotState.SET_NUM_OF_ROOMS);
+
+        return SendMessage.builder()
+                .chatId(chatId)
+                .text(EmojiParser.parseToUnicode("Select ad type :memo:"))
+                .replyMarkup(adTypeKeyboard())
+                .build();
+    }
+
+    private ReplyKeyboardMarkup adTypeKeyboard() {
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        replyKeyboardMarkup.setSelective(true);
+        replyKeyboardMarkup.setResizeKeyboard(true);
+
+        KeyboardButton owner = new KeyboardButton("Only from the owners");
+        KeyboardButton agency = new KeyboardButton("Agencies only");
+        KeyboardButton ownerAndAgency = new KeyboardButton("Owners + Agencies");
+
+        List<KeyboardRow> keyboard = List.of(new KeyboardRow(List.of(owner, agency)),
+                new KeyboardRow(List.of(ownerAndAgency)));
+        replyKeyboardMarkup.setKeyboard(keyboard);
+        return replyKeyboardMarkup;
     }
 
     private ReplyKeyboardRemove removeKeyboard() {
