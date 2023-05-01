@@ -4,6 +4,7 @@ import com.pirog.PolishRealtorBot.botapi.interactive.BotState;
 import com.pirog.PolishRealtorBot.botapi.interactive.handlers.InputMessageHandler;
 import com.pirog.PolishRealtorBot.cache.UserDataCache;
 import com.pirog.PolishRealtorBot.dao.entity.UserParserSettings;
+import com.pirog.PolishRealtorBot.dao.repository.UserParserSettingsRepository;
 import com.pirog.PolishRealtorBot.service.UserParserSettingsInMemoryService;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.AccessLevel;
@@ -28,6 +29,7 @@ public class FillParserHandler implements InputMessageHandler {
 
      UserDataCache userCache;
      UserParserSettingsInMemoryService userParserSettingsInMemoryService;
+    private final UserParserSettingsRepository userParserSettingsRepository;
 
     @Override
     public SendMessage handle(Message message) {
@@ -48,7 +50,8 @@ public class FillParserHandler implements InputMessageHandler {
             case SET_CITY -> answer = handleSetCity(message);
             case SET_MIN_PRICE -> answer = handleSetMinPrice(message);
             case SET_MAX_PRICE -> answer = handleSetMaxPrice(message);
-            case SET_AD_TYPE -> answer = handleAdType(message);
+            case SET_AD_TYPE -> answer = handleSetAdType(message);
+            case SET_NUM_OF_ROOMS -> answer = handleSetNumOfRooms(message);
             default -> answer = getDefaultAnswer(message);
         }
         return answer;
@@ -185,7 +188,7 @@ public class FillParserHandler implements InputMessageHandler {
                 .build();
     }
 
-    private SendMessage handleAdType(Message message) {
+    private SendMessage handleSetAdType(Message message) {
         long chatId = message.getChatId();
         long userId = message.getFrom().getId();
         int maxPrice;
@@ -228,6 +231,58 @@ public class FillParserHandler implements InputMessageHandler {
 
         List<KeyboardRow> keyboard = List.of(new KeyboardRow(List.of(owner, agency)),
                 new KeyboardRow(List.of(ownerAndAgency)));
+        replyKeyboardMarkup.setKeyboard(keyboard);
+        return replyKeyboardMarkup;
+    }
+
+    private SendMessage handleSetNumOfRooms(Message message) {
+        long chatId = message.getChatId();
+        long userId = message.getFrom().getId();
+        String adType = message.getText();
+        List<String> adTypes = List.of("Only from the owners", "Agencies only", "Owners + Agencies");
+
+        if (adTypes.contains(adType)) {
+            userCache.setBotState(userId, BotState.PARSER_SETTINGS_FILLED);
+
+            UserParserSettings old = userParserSettingsInMemoryService.get(userId);
+            if (adType.equals(adTypes.get(0))) {
+                old.setAdType("private");
+            } else if (adType.equals(adTypes.get(1))) {
+                old.setAdType("business");
+            }
+            userParserSettingsInMemoryService.update(userId, old);
+            return SendMessage.builder()
+                    .chatId(chatId)
+                    .text(EmojiParser.parseToUnicode("Select number of rooms :door:"))
+                    .replyMarkup(numOfRoomsKeyboard())
+                    .build();
+        } else {
+            return getDefaultAnswer(message);
+        }
+    }
+
+    private ReplyKeyboardMarkup numOfRoomsKeyboard() {
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        replyKeyboardMarkup.setResizeKeyboard(true);
+        replyKeyboardMarkup.setSelective(true);
+
+        KeyboardButton one = new KeyboardButton("1 room");
+        KeyboardButton two = new KeyboardButton("2 rooms");
+        KeyboardRow row1 = new KeyboardRow(List.of(one, two));
+
+        KeyboardButton three = new KeyboardButton("3 rooms");
+        KeyboardButton four = new KeyboardButton("4 rooms");
+        KeyboardRow row2 = new KeyboardRow(List.of(three, four));
+
+        KeyboardButton oneTwo = new KeyboardButton("1 - 2 rooms");
+        KeyboardButton twoThree = new KeyboardButton("2 - 3 rooms");
+        KeyboardRow row3 = new KeyboardRow(List.of(oneTwo, twoThree));
+
+        KeyboardButton threeFour = new KeyboardButton("3-4 rooms");
+        KeyboardButton moreThanFour = new KeyboardButton("4 and more rooms");
+        KeyboardRow row4 = new KeyboardRow(List.of(threeFour, moreThanFour));
+
+        List<KeyboardRow> keyboard = List.of(row1, row2, row3, row4);
         replyKeyboardMarkup.setKeyboard(keyboard);
         return replyKeyboardMarkup;
     }

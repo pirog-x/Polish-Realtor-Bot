@@ -6,6 +6,7 @@ import com.pirog.PolishRealtorBot.exception.NoSuchUserException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.Optional;
 
 @Service
@@ -32,7 +33,7 @@ public class UserParserSettingsService {
         userSettings.setMinPrice(another.getMinPrice());
         userSettings.setMaxPrice(another.getMaxPrice());
         userSettings.setAdType(another.getAdType());
-        userSettings.setNumOfRooms(another.getNumOfRooms());
+        userSettings.setNumberOfRooms(new HashSet<>(another.getNumberOfRooms()));
 
         repository.save(userSettings);
     }
@@ -48,11 +49,7 @@ public class UserParserSettingsService {
     private boolean isValidSettings(UserParserSettings settings) {
         return (settings.getUserId().describeConstable().isPresent() &&
                 !settings.getLanguage().isBlank() &&
-                !settings.getCity().isBlank() &&
-                settings.getNumOfRooms().describeConstable().isPresent()
-        ) && (
-                settings.getMinPrice() <= settings.getMaxPrice() &&
-                settings.getNumOfRooms() <= 4
-        );
+                !settings.getCity().isBlank()
+        ) && settings.getMinPrice() <= settings.getMaxPrice();
     }
 }

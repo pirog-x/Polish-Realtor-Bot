@@ -8,6 +8,7 @@ public enum BotState {
         SET_MAX_PRICE,
         SET_AD_TYPE,
         SET_NUM_OF_ROOMS,
+    PARSER_SETTINGS_FILLED,
 
     BOT_SETTINGS,
         CHANGE_LANGUAGE,
