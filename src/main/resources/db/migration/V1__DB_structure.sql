@@ -1,28 +1,29 @@
-create table if not exists number_of_rooms (
-    number varchar(255) not null,
-    primary key (number)
+CREATE TABLE if NOT EXISTS number_of_rooms
+(
+    number VARCHAR(255) NOT NULL,
+    PRIMARY key (number)
 );
 
-create table if not exists settings__number_of_rooms (
-  user_id int8 not null,
-  number_of_rooms varchar(255) not null,
-  primary key (user_id, number_of_rooms)
+CREATE TABLE if NOT EXISTS settings__number_of_rooms
+(
+    user_id         int8         NOT NULL,
+    number_of_rooms VARCHAR(255) NOT NULL,
+    PRIMARY key (user_id, number_of_rooms)
 );
 
-create table if not exists user_parser_settings (
-  user_id int8 not null,
-  ad_type varchar(255),
-  city varchar(255),
-  language varchar(255),
-  max_price int4,
-  min_price int4,
-  primary key (user_id)
+CREATE TABLE if NOT EXISTS user_parser_settings
+(
+    user_id   int8 NOT NULL,
+    ad_type   VARCHAR(255),
+    city      VARCHAR(255),
+    LANGUAGE  VARCHAR(255),
+    max_price int4,
+    min_price int4,
+    PRIMARY key (user_id)
 );
 
-alter table if exists settings__number_of_rooms
-    add constraint number_of_rooms_fk
-    foreign key (number_of_rooms) references number_of_rooms;
+ALTER TABLE if EXISTS settings__number_of_rooms
+    ADD CONSTRAINT number_of_rooms_fk FOREIGN key (number_of_rooms) REFERENCES number_of_rooms;
 
-alter table if exists settings__number_of_rooms
-    add constraint user_id_fk
-    foreign key (user_id) references user_parser_settings;
+ALTER TABLE if EXISTS settings__number_of_rooms
+    ADD CONSTRAINT user_id_fk FOREIGN key (user_id) REFERENCES user_parser_settings;

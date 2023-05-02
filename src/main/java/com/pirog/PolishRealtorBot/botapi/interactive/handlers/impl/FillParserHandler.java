@@ -6,6 +6,7 @@ import com.pirog.PolishRealtorBot.cache.UserDataCache;
 import com.pirog.PolishRealtorBot.dao.entity.UserParserSettings;
 import com.pirog.PolishRealtorBot.dao.repository.UserParserSettingsRepository;
 import com.pirog.PolishRealtorBot.service.UserParserSettingsInMemoryService;
+import com.pirog.PolishRealtorBot.service.UserParserSettingsService;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -27,9 +28,9 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class FillParserHandler implements InputMessageHandler {
 
-     UserDataCache userCache;
-     UserParserSettingsInMemoryService userParserSettingsInMemoryService;
-    private final UserParserSettingsRepository userParserSettingsRepository;
+    UserDataCache userCache;
+    UserParserSettingsInMemoryService userParserSettingsInMemoryService;
+    UserParserSettingsService userParserSettingsService;
 
     @Override
     public SendMessage handle(Message message) {
@@ -278,13 +279,25 @@ public class FillParserHandler implements InputMessageHandler {
         KeyboardButton twoThree = new KeyboardButton("2 - 3 rooms");
         KeyboardRow row3 = new KeyboardRow(List.of(oneTwo, twoThree));
 
-        KeyboardButton threeFour = new KeyboardButton("3-4 rooms");
+        KeyboardButton threeFour = new KeyboardButton("3 - 4 rooms");
         KeyboardButton moreThanFour = new KeyboardButton("4 and more rooms");
         KeyboardRow row4 = new KeyboardRow(List.of(threeFour, moreThanFour));
 
         List<KeyboardRow> keyboard = List.of(row1, row2, row3, row4);
         replyKeyboardMarkup.setKeyboard(keyboard);
         return replyKeyboardMarkup;
+    }
+
+    private SendMessage handleParserSettingsFilled(Message message) {
+        long chatId = message.getChatId();
+        long userId = message.getFrom().getId();
+        String numberOfRooms = message.getText();
+        List<String> correctNumbersOfRooms = List.of("1 room", "2 rooms", "3 rooms", "4 rooms", "1 - 2 rooms", "2 - 3 rooms", "3 - 4 rooms", "4 and more rooms");
+        if (correctNumbersOfRooms.contains(numberOfRooms)) {
+            return null;
+        } else {
+            return getDefaultAnswer(message);
+        }
     }
 
     private ReplyKeyboardRemove removeKeyboard() {

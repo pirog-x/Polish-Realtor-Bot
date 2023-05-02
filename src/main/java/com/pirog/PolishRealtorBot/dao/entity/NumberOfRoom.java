@@ -13,9 +13,10 @@ import java.util.Set;
 @Setter
 public class NumberOfRoom implements Serializable {
     @Id
-    @Column(name = "number")
-    private String number;
+    @Enumerated(EnumType.STRING)
+    private NumberOfRoomEnum number;
 
+    @Enumerated(EnumType.STRING)
     @ManyToMany(mappedBy = "numberOfRooms")
     private Set<UserParserSettings> userSettings;
 }
