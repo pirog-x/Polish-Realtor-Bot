@@ -1,6 +1,7 @@
 package com.pirog.PolishRealtorBot.botapi.interactive;
 
 import com.pirog.PolishRealtorBot.botapi.interactive.handlers.InputMessageHandler;
+import com.pirog.PolishRealtorBot.exception.NoSuchStateHandler;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -8,6 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class BotStateContext {
@@ -26,12 +28,13 @@ public class BotStateContext {
         if (isFillingParser(state)) {
             return messageHandlers.get(BotState.FILLING_PARSER_SETTINGS);
         }
-        return messageHandlers.get(state);
+        return Optional.ofNullable(messageHandlers.get(state))
+                .orElseThrow(() -> new NoSuchStateHandler(state));
     }
 
     private boolean isFillingParser(BotState curr) {
         return switch (curr) {
-            case FILLING_PARSER_SETTINGS, SET_LANGUAGE, SET_CITY, SET_MIN_PRICE, SET_MAX_PRICE, SET_AD_TYPE, SET_NUM_OF_ROOMS -> true;
+            case FILLING_PARSER_SETTINGS, SET_LANGUAGE, SET_CITY, SET_MIN_PRICE, SET_MAX_PRICE, SET_AD_TYPE, SET_NUM_OF_ROOMS, PARSER_SETTINGS_FILLED -> true;
             default -> false;
         };
     }

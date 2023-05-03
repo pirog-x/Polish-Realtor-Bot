@@ -3,8 +3,10 @@ package com.pirog.PolishRealtorBot.botapi.interactive.handlers.impl;
 import com.pirog.PolishRealtorBot.botapi.interactive.BotState;
 import com.pirog.PolishRealtorBot.botapi.interactive.handlers.InputMessageHandler;
 import com.pirog.PolishRealtorBot.cache.UserDataCache;
+import com.pirog.PolishRealtorBot.dao.entity.NumberOfRoom;
+import com.pirog.PolishRealtorBot.dao.entity.NumberOfRoomEnum;
 import com.pirog.PolishRealtorBot.dao.entity.UserParserSettings;
-import com.pirog.PolishRealtorBot.dao.repository.UserParserSettingsRepository;
+import com.pirog.PolishRealtorBot.service.NumberOfRoomService;
 import com.pirog.PolishRealtorBot.service.UserParserSettingsInMemoryService;
 import com.pirog.PolishRealtorBot.service.UserParserSettingsService;
 import com.vdurmont.emoji.EmojiParser;
@@ -12,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -19,9 +22,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRem
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 @Component
 @AllArgsConstructor
@@ -31,6 +32,7 @@ public class FillParserHandler implements InputMessageHandler {
     UserDataCache userCache;
     UserParserSettingsInMemoryService userParserSettingsInMemoryService;
     UserParserSettingsService userParserSettingsService;
+    NumberOfRoomService numberOfRoomService;
 
     @Override
     public SendMessage handle(Message message) {
@@ -53,6 +55,7 @@ public class FillParserHandler implements InputMessageHandler {
             case SET_MAX_PRICE -> answer = handleSetMaxPrice(message);
             case SET_AD_TYPE -> answer = handleSetAdType(message);
             case SET_NUM_OF_ROOMS -> answer = handleSetNumOfRooms(message);
+            case PARSER_SETTINGS_FILLED -> answer = handleParserSettingsFilled(message);
             default -> answer = getDefaultAnswer(message);
         }
         return answer;
@@ -104,6 +107,7 @@ public class FillParserHandler implements InputMessageHandler {
         if (existLanguages.contains(lang)) {
             UserParserSettings settings = new UserParserSettings();
             settings.setLanguage(lang);
+            settings.setUserId(userId);
             userParserSettingsInMemoryService.save(userId, settings);
             userCache.setBotState(userId, BotState.SET_MIN_PRICE);
             return SendMessage.builder()
@@ -294,10 +298,61 @@ public class FillParserHandler implements InputMessageHandler {
         String numberOfRooms = message.getText();
         List<String> correctNumbersOfRooms = List.of("1 room", "2 rooms", "3 rooms", "4 rooms", "1 - 2 rooms", "2 - 3 rooms", "3 - 4 rooms", "4 and more rooms");
         if (correctNumbersOfRooms.contains(numberOfRooms)) {
-            return null;
+            NumberOfRoomEnum[] userNumOfRooms = getRoomsFromMessage(numberOfRooms, correctNumbersOfRooms);
+            UserParserSettings userParserSettings = userParserSettingsInMemoryService.get(userId);
+            userParserSettingsService.save(setRoomsToUserSettings(userParserSettings, userNumOfRooms));
+            userCache.setBotState(userId, BotState.WAIT_FOR_FLAT_SEARCH);
+
+            return SendMessage.builder()
+                    .chatId(chatId)
+                    .text(EmojiParser.parseToUnicode("Complete!\nWaiting for new ads :wink:"))
+                    .parseMode(ParseMode.HTML)
+                    .replyMarkup(getMainKeyboard())
+                    .build();
         } else {
             return getDefaultAnswer(message);
         }
+    }
+
+    private ReplyKeyboardMarkup getMainKeyboard() {
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        replyKeyboardMarkup.setSelective(true);
+        replyKeyboardMarkup.setResizeKeyboard(true);
+        replyKeyboardMarkup.setIsPersistent(false);
+
+        KeyboardButton botSettings = new KeyboardButton(EmojiParser.parseToUnicode("Bot settings :gear:"));
+        KeyboardButton donate = new KeyboardButton(EmojiParser.parseToUnicode("Donate to author \uD83E\uDEF6"));
+
+        KeyboardRow row1 = new KeyboardRow(List.of(botSettings, donate));
+        replyKeyboardMarkup.setKeyboard(List.of(row1));
+        return replyKeyboardMarkup;
+    }
+
+    private UserParserSettings setRoomsToUserSettings(UserParserSettings userParserSettings, NumberOfRoomEnum[] numberOfRooms) {
+        Set<NumberOfRoom> rooms = numberOfRoomService.getAllById(numberOfRooms);
+        userParserSettings.setNumberOfRooms(rooms);
+        return userParserSettings;
+    }
+
+    private NumberOfRoomEnum[] getRoomsFromMessage(String rooms, List<String> correctNumbersOfRooms) {
+        Map<String, NumberOfRoomEnum[]> mapForParsing = getMapForParsing(correctNumbersOfRooms);
+        return mapForParsing.get(rooms);
+    }
+
+    private Map<String, NumberOfRoomEnum[]> getMapForParsing(List<String> correctNumbersOfRooms) {
+        Map<String, NumberOfRoomEnum[]> mapForParsing = new HashMap<>();
+        // "1 room", "2 rooms", "3 rooms", "4 rooms", "1 - 2 rooms", "2 - 3 rooms", "3 - 4 rooms", "4 and more rooms"
+        int i = 0;
+        mapForParsing.put(correctNumbersOfRooms.get(i++), new NumberOfRoomEnum[]{NumberOfRoomEnum.one});
+        mapForParsing.put(correctNumbersOfRooms.get(i++), new NumberOfRoomEnum[]{NumberOfRoomEnum.two});
+        mapForParsing.put(correctNumbersOfRooms.get(i++), new NumberOfRoomEnum[]{NumberOfRoomEnum.three});
+        mapForParsing.put(correctNumbersOfRooms.get(i++), new NumberOfRoomEnum[]{NumberOfRoomEnum.four});
+
+        mapForParsing.put(correctNumbersOfRooms.get(i++), new NumberOfRoomEnum[]{NumberOfRoomEnum.one, NumberOfRoomEnum.two});
+        mapForParsing.put(correctNumbersOfRooms.get(i++), new NumberOfRoomEnum[]{NumberOfRoomEnum.two, NumberOfRoomEnum.three});
+        mapForParsing.put(correctNumbersOfRooms.get(i++), new NumberOfRoomEnum[]{NumberOfRoomEnum.three, NumberOfRoomEnum.four});
+        mapForParsing.put(correctNumbersOfRooms.get(i), new NumberOfRoomEnum[]{NumberOfRoomEnum.four});
+        return mapForParsing;
     }
 
     private ReplyKeyboardRemove removeKeyboard() {
